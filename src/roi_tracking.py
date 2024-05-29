@@ -1,7 +1,7 @@
 import cv2
 import time
 
-# Function drawing bounding box
+# Function draw bounding box
 def drawBbox(image, bbox):
     # Extracting coordinates and dimensions from bbox
     x, y, w, h = [int(i) for i in bbox]
@@ -10,69 +10,94 @@ def drawBbox(image, bbox):
 
 # Function to process the video
 def processVideoinformation(video_path):
-    # Opening file to store information
+    # Open file to store information
     informatiefile = open("informatie.txt", "a")
-    # Opening the video file
+    # Open the video file
     cap = cv2.VideoCapture(video_path)
-    # Reading the first frame
+    # Read the first frame
     ret, frame = cap.read()
     # Check if the frame was successfully read
     if not ret:
-        raise ValueError("Cannot read video file")
+        raise ValueError("Cannot read video file") 
     
+    # Resize the first frame to resolution
+    frame = cv2.resize(frame, (640, 480))
+
     # Selecting ROI (Region of Interest) for tracking
     bbox = cv2.selectROI("Select Object to Track", frame, False)
     # Creating CSRT tracker
     tracker = cv2.TrackerCSRT_create()
-    # Initializing the tracker with the selected ROI
+    # Initialize the tracker with the selected ROI
     tracker.init(frame, bbox)
     
-    # Initializing frame counter and start time for processing
+    # Initialize frame counter and start time for process
     frameCounter = 0
     startTime = time.time()
     
-    # Looping through each frame of the video
+    # Loop through each frame of the video
     while True:
-        # Reading the next frame
+        # Read the next frame
         ret, frame = cap.read()
-        # Calculating elapsed time
+        if not ret:
+            break
+        
+        # Resize frame to a resolution 
+        frame = cv2.resize(frame, (640, 480))
+
+        # Calculate elapsed time
         elapsedTime = time.time() - startTime
         
-        # Processing frames once per second
+        # Process frames once per second
         if elapsedTime >= 1:
-            # Saving frame
+            # Save frames
             cv2.imwrite("frame%d.jpg" % frameCounter, frame)
-            # Updating start time and frame counter
+            # Update start time and frame counter
             startTime = time.time() 
             frameCounter += 1
-            # Writing bounding box information to file: (frame(nummer), x,y,w,h)
+            # Write bounding box information to file: (frame(nummer), x,y,w,h)
             bboxStr = f"Frame: {frameCounter}, x: {bbox[0]}, y: {bbox[1]}, w: {bbox[2]}, h: {bbox[3]}"
             informatiefile.write(bboxStr + "\n")
             informatiefile.flush()
             
-        # Updating the tracker with the current frame
+        # Update the tracker with the current frame
         ret, bbox = tracker.update(frame)
-        # If tracking is successful, draw bounding box on the frame
+        # Check if tracking is successful
         if ret:
-            drawBbox(frame, bbox)
-
-        # Displaying the frame with bounding box
+            # Draw bounding box if valid
+            x, y, w, h = [int(v) for v in bbox]
+            if 0 <= x <= frame.shape[1] and 0 <= y <= frame.shape[0] and w > 0 and h > 0:
+                drawBbox(frame, bbox)
+        else:
+            # Log tracker failure
+            print(f"Tracking failed at frame {frameCounter}")
+            informatiefile.write(f"Tracking failed at frame {frameCounter}\n")
+            informatiefile.flush()
+        
+        # Display the frame with bounding box
         cv2.imshow('Tracking', frame)
+        
+        # Check for key press
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('r'):
+            # Allow user to reselect ROI
+            bbox = cv2.selectROI("Select Object to Track", frame, False)
+            tracker = cv2.TrackerCSRT_create()
+            tracker.init(frame, bbox)
 
-        # Exiting the loop if ESC key is pressed
-        if cv2.waitKey(1) == 27:
+        # Exit the loop if ESC key is pressed
+        if key == 27:
             break
 
     informatiefile.close()
-    # Releasing the video capture
+    # Release the video capture
     cap.release()
     cv2.destroyAllWindows()
 
 # Main function
 def main():
     # Video file
-    video_path = "Boot.mp4"
-    # Calling the function to process the video
+    video_path = "swimbad2.mp4"
+    # Call the function to process the video
     processVideoinformation(video_path)
 
 # Entry point of the script
