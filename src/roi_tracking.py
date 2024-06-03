@@ -50,14 +50,15 @@ def processVideoinformation(video_path):
         # Process frames once per second
         if elapsedTime >= 1:
             # Save frames
-            cv2.imwrite("frame%d.jpg" % frameCounter, frame)
+            cv2.imwrite(f"frame{frameCounter}.jpg", frame)
             # Update start time and frame counter
-            startTime = time.time() 
-            frameCounter += 1
+            startTime = time.time()
             # Write bounding box information to file: (frame(nummer), x,y,w,h)
             bboxStr = f"Frame: {frameCounter}, x: {bbox[0]}, y: {bbox[1]}, w: {bbox[2]}, h: {bbox[3]}"
             informatiefile.write(bboxStr + "\n")
             informatiefile.flush()
+            
+            frameCounter += 1  # Move frameCounter increment here
             
         # Update the tracker with the current frame
         ret, bbox = tracker.update(frame)
@@ -67,11 +68,11 @@ def processVideoinformation(video_path):
             x, y, w, h = [int(v) for v in bbox]
             if 0 <= x <= frame.shape[1] and 0 <= y <= frame.shape[0] and w > 0 and h > 0:
                 drawBbox(frame, bbox)
-        else:
+       # else:
             # Log tracker failure
-            print(f"Tracking failed at frame {frameCounter}")
-            informatiefile.write(f"Tracking failed at frame {frameCounter}\n")
-            informatiefile.flush()
+            #print(f"Tracking failed at frame {frameCounter}")
+            #informatiefile.write(f"Tracking failed at frame {frameCounter}\n")
+            #informatiefile.flush()
         
         # Display the frame with bounding box
         cv2.imshow('Tracking', frame)
@@ -96,7 +97,7 @@ def processVideoinformation(video_path):
 # Main function
 def main():
     # Video file
-    video_path = "swimbad2.mp4"
+    video_path = "zwen.mp4"
     # Call the function to process the video
     processVideoinformation(video_path)
 
