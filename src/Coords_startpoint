@@ -1,0 +1,82 @@
+import cv2
+import numpy as np
+from skimage import transform
+
+def Get_start_point(image):
+    # Stap 2: Converteer de afbeelding naar HSV-kleurruimte voor een betere kleurdetectie
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # Definieer de drempelwaarden voor de rode kleur in HSV
+    lower_red1 = np.array([0, 70, 50])
+    upper_red1 = np.array([10, 255, 255])
+
+    # Maak maskers voor de rode kleur
+    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+
+    # Stap 3: Zoek de contouren van de rode stip
+    contours, _ = cv2.findContours(mask1, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        M = cv2.moments(largest_contour)
+        if M["m00"] != 0:
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"])
+        else:
+            cx, cy = 0, 0
+
+        # Stap 4: Teken de x- en y-as op basis van de coördinaten van de rode stip
+        height, width, _ = image.shape
+        cv2.line(image, (cx, 0), (cx, height), (255, 0, 0), 2)  # y-as
+        cv2.line(image, (0, cy), (width, cy), (255, 0, 0), 2)  # x-as
+
+        lokal_x = cx - cx
+        lokal_y = cy - cy
+        # Teken de gevonden rode stip
+        cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1,)
+        text = f"({lokal_x}, {lokal_y})"
+        cv2.putText(image, text, (cx + 10, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+    cv2.imshow('Coordinaat bepaling', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+# mouse klik
+click_coords = None
+def mouse_callback(event, x, y, flags, param):
+    global click_coords
+    if event == cv2.EVENT_LBUTTONDOWN:
+        click_coords = (x, y)
+
+def main():
+    ##Foto inladen 
+       image = cv2.imread("Image path")
+       Get_start_point(image)
+    ##
+
+    ###Livefeed gebruiken 
+    # cap = cv2.VideoCapture(1)
+    # if not cap.isOpened():
+    #     print("Error: Could not open video stream.")
+    #     return
+
+    # while True:
+    #     ret, frame = cap.read()
+    #     if not ret:
+    #         print("Failed to grab frame")
+    #         break
+
+    #     frame_resized = transform.resize(frame, (480, 720))
+    #     frame_resized = (frame_resized * 255).astype('uint8')
+
+    #     if cv2.waitKey(1) & 0xFF == ord('q'):
+    #         break
+    #     Get_start_point(frame)
+    # local_x = click_coords[0]
+    # local_y = click_coords[1]
+    # cv2.circle(frame, click_coords, 5, (0, 0, 255), -1)
+    # cv2.putText(frame, f"({local_x},{local_y})", click_coords, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+    # cap.release()
+    # cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
