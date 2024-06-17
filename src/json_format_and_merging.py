@@ -22,7 +22,7 @@ def mergeJsonContents():
                 except ValueError:
                     continue  
                 key = key.strip()
-                value = int(value.strip())  
+                value = value.strip()
                 data[key] = value
                 has_data = True
             # If the JSON file has no data, add only the filename with an empty dictionary

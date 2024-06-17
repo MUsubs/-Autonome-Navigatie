@@ -2,7 +2,7 @@ import os
 
 def removeJsonFiles():
     """
-    Removes all JSON files in the current directory.
+    Removes all JSON files in current directory.
     """
     # Get the current directory
     current_directory = os.getcwd()
