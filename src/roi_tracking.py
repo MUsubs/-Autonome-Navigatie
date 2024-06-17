@@ -1,5 +1,8 @@
 import cv2
 import time
+import scipy.ndimage
+import scipy
+
 
 # Function draw bounding box
 def drawBbox(image, bbox):
@@ -11,14 +14,24 @@ def drawBbox(image, bbox):
 # Function to process the video
 def processVideoinformation(video_path):
     # Open file to store information
-    informatiefile = open("informatie.txt", "a")
+    informatiefile = open("informatie(**NAAM**).json", "a")
     # Open the video file
     cap = cv2.VideoCapture(video_path)
+
     # Read the first frame
     ret, frame = cap.read()
+    frame = cv2.resize(frame, (640, 480), fx = 0, fy = 0, interpolation = cv2.INTER_CUBIC)
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    img_blur = cv2.GaussianBlur(frame, (9,9), sigmaX=0, sigmaY=0)
+    mask1 = [[0.5, 1, 0.5], [  1,-6,   1], [0.5, 1, 0.5]]
+    edge_detect4 = scipy.ndimage.convolve(img_blur, mask1)
+    img_blur2 = cv2.blur(edge_detect4, (3,3))
+    img_smooth = cv2.medianBlur(img_blur2, 3)
+    frame = img_smooth
+    
     # Check if the frame was successfully read
     if not ret:
-        raise ValueError("Cannot read video file") 
+         raise ValueError("Cannot read video file") 
     
     # Resize the first frame to resolution
     frame = cv2.resize(frame, (640, 480))
@@ -36,10 +49,18 @@ def processVideoinformation(video_path):
     
     # Loop through each frame of the video
     while True:
-        # Read the next frame
+         # Read the next frame
         ret, frame = cap.read()
+        frame = cv2.resize(frame, (640, 480), fx = 0, fy = 0, interpolation = cv2.INTER_CUBIC)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        img_blur = cv2.GaussianBlur(frame, (9,9), sigmaX=0, sigmaY=0)
+        mask1 = [[0.5, 1, 0.5], [  1,-6,   1], [0.5, 1, 0.5]]
+        edge_detect4 = scipy.ndimage.convolve(img_blur, mask1)
+        img_blur2 = cv2.blur(edge_detect4, (3,3))
+        img_smooth = cv2.medianBlur(img_blur2, 3)
+        frame = img_smooth
         if not ret:
-            break
+            break 
         
         # Resize frame to a resolution 
         frame = cv2.resize(frame, (640, 480))
@@ -50,7 +71,7 @@ def processVideoinformation(video_path):
         # Process frames once per second
         if elapsedTime >= 1:
             # Save frames
-            cv2.imwrite(f"frame{frameCounter}.jpg", frame)
+            cv2.imwrite(f"frame{frameCounter}(**NAAM**).jpg", frame)
             # Update start time and frame counter
             startTime = time.time()
             # Write bounding box information to file: (frame(nummer), x,y,w,h)
@@ -97,8 +118,8 @@ def processVideoinformation(video_path):
 # Main function
 def main():
     # Video file
-    video_path = "zwen.mp4"
-    # Call the function to process the video
+    video_path = "**VIDEO**.mp4"
+        # Call the function to process the video
     processVideoinformation(video_path)
 
 # Entry point of the script
