@@ -3,7 +3,6 @@ import time
 import scipy.ndimage
 import scipy
 
-
 # Function draw bounding box
 def drawBbox(image, bbox):
     # Extracting coordinates and dimensions from bbox
@@ -14,9 +13,10 @@ def drawBbox(image, bbox):
 # Function to process the video
 def processVideoinformation(video_path):
     # Open file to store information
-    informatiefile = open("informatie(**NAAM**).json", "a")
+    informatiefile = open("informatie(zwembad1).json", "a")
     # Open the video file
     cap = cv2.VideoCapture(video_path)
+    
 
     # Read the first frame
     ret, frame = cap.read()
@@ -69,9 +69,17 @@ def processVideoinformation(video_path):
         elapsedTime = time.time() - startTime
         
         # Process frames once per second
+        # Update the tracker with the current frame
+        ret, bbox = tracker.update(frame)
+        # Check if tracking is successful
+        if ret:
+            # Draw bounding box if valid
+            x, y, w, h = [int(v) for v in bbox]
+            if 0 <= x <= frame.shape[1] and 0 <= y <= frame.shape[0] and w > 0 and h > 0:
+                drawBbox(frame, bbox)
         if elapsedTime >= 1:
             # Save frames
-            cv2.imwrite(f"frame{frameCounter}(**NAAM**).jpg", frame)
+            cv2.imwrite(f"frame{frameCounter}(zwembad1).jpg", frame)
             # Update start time and frame counter
             startTime = time.time()
             # Write bounding box information to file: (frame(nummer), x,y,w,h)
@@ -81,14 +89,6 @@ def processVideoinformation(video_path):
             
             frameCounter += 1  # Move frameCounter increment here
             
-        # Update the tracker with the current frame
-        ret, bbox = tracker.update(frame)
-        # Check if tracking is successful
-        if ret:
-            # Draw bounding box if valid
-            x, y, w, h = [int(v) for v in bbox]
-            if 0 <= x <= frame.shape[1] and 0 <= y <= frame.shape[0] and w > 0 and h > 0:
-                drawBbox(frame, bbox)
        # else:
             # Log tracker failure
             #print(f"Tracking failed at frame {frameCounter}")
@@ -118,7 +118,7 @@ def processVideoinformation(video_path):
 # Main function
 def main():
     # Video file
-    video_path = "**VIDEO**.mp4"
+    video_path = "zwembad1.MP4"
         # Call the function to process the video
     processVideoinformation(video_path)
 
