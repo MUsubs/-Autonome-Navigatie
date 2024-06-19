@@ -7,7 +7,6 @@ import scipy
 from scipy import ndimage
 import skvideo
 
-
 cap = cv2.VideoCapture("C:/Users/slden/TI_software/R2D2/Autonome-Navigatie/Voorkant_VID6.mp4")
 
 while (cap.isOpened()):
