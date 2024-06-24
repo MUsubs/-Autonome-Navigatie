@@ -20,6 +20,7 @@ def create_app(clear_database=True):
         SECRET_KEY='dev',
         DATABASE=database_path,
     )
+    app.static_folder = 'static'
     server = Server(app, clear_database)
     return app
 
