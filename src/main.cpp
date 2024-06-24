@@ -1,65 +1,44 @@
-#include "Arduino.h"
+#include "data_receiver.hpp"
+#include "data_sender.hpp"
+#include "message_interpreter.hpp"
+#include "photo_diode.hpp"
+#include "serial_control.hpp"
 
-String receivedString = ""; // A string to hold incoming data
-bool stringComplete = false; // Whether the string is complete
+#define R2D2_DEBUG_ENABLE
 
-float x = 0.0;
-float y = 1.0;
-float z = 1.0;
+#include <Arduino.h>
+const int frequency = 30;
 
-
-// MAKE THIS WORK
-void parseCoordinates(String str) {
-    int xIndex = str.indexOf('X');
-    int yIndex = str.indexOf('Y');
-    int zIndex = str.indexOf('Z');
-    Serial.print(xIndex);
-    Serial.print(yIndex);
-    Serial.print(zIndex);
-    if (xIndex != -1 && yIndex != -1 && zIndex != -1) {
-        String xStr = str.substring(xIndex + 1, yIndex);
-        String yStr = str.substring(yIndex + 1, zIndex);
-        String zStr = str.substring(zIndex + 1);
-
-        x = xStr.toFloat();
-        y = yStr.toFloat();
-        z = zStr.toFloat();
-    }
-}
+sen::DataSender sender( 22, frequency, 32, 1 );
+sen::SerialControl serial_control{ sender, 1 };
 
 void setup() {
-    Serial.begin(9600);
-    delay(2000);
+    pinMode( LED_BUILTIN, OUTPUT );
+    pinMode( 7, INPUT );
+    pinMode( 8, INPUT );
+
+    Serial.begin( 9600 );
+    serial_control.activate();
 }
 
+bool b_do = false;
+
 void loop() {
-    // Read data from the serial port
-    while (Serial.available()) {
-        
-        char inChar = Serial.read();
-        Serial.print(inChar);
-        receivedString = String(inChar);
-        Serial.print(receivedString);
-        // If the incoming character is a newline, the string is complete
-        if (inChar == '\n') {
-            stringComplete = true;
-            break;
-        }
+    if ( serial_control.getMeasurementCount() ) {
+        digitalWrite( LED_BUILTIN, HIGH );
+    } else {
+        digitalWrite( LED_BUILTIN, LOW );
     }
-
-    // Check if data has been received
-    if (receivedString != "") {
-        parseCoordinates(receivedString);
-        // Print the parsed coordinates
-        Serial.print("X=");
-        Serial.print(x);
-        Serial.print(" Y=");
-        Serial.print(y);
-        Serial.print(" Z=");
-        Serial.println(z);
-
-        // Clear the string for the next input
-        receivedString = "";
-        stringComplete = false;
+    if ( !digitalRead( 7 ) && !digitalRead( 8 ) ) {
+        b_do = true;
     }
+    if ( digitalRead( 7 ) && b_do ) {
+        serial_control.receivedACK();
+        b_do = false;
+    }
+    if ( digitalRead( 8 ) && b_do ) {
+        serial_control.addMeasure( analogReadTemp() );
+        b_do = false;
+    }
+    taskYIELD();
 }
