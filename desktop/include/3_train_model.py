@@ -8,15 +8,16 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 class Tracking:
-    def __init__(self, image_dir, json_path, scaler=256):
+    def __init__(self, image_dir, json_path, scaler=160):
         self.image_dir = image_dir
         self.json_path = json_path
-        self.scaler = scaler
+        self.scaler = scaler  # Assuming scaler is the width for a 4:3 ratio
+        self.scaler_height = int(scaler * (3/4))  # Calculate height based on 4:3 ratio
         self.coordinates_data = self.load_json()
         self.model = None
-
+        
     def load_json(self):
-        with open(self.json_path) as f:
+        with open(self.json_path, 'r') as f:
             return json.load(f)
 
     def load_data(self):
@@ -29,8 +30,10 @@ class Tracking:
                 if img is None:
                     print(f"Warning: Could not read image {img_path}")
                     continue
-                img = cv2.resize(img, (self.scaler, self.scaler))
+                img = cv2.resize(img, (self.scaler, self.scaler_height))
                 images.append(img)
+                
+                print(f"Image {filename} scaled to resolution: {self.scaler}x{self.scaler_height}")
 
                 frame_name = filename.replace('.jpg', '.json')
                 if frame_name in self.coordinates_data:
@@ -40,15 +43,15 @@ class Tracking:
                         y = float(box['y'])
                         w = float(box['w'])
                         h = float(box['h'])
-                        scaled_box = self.scale_bbox(x, y, w, h)
+                        scaled_box = self.scale_bbox(x, y, w, h, (640, 480))
                         boxes.append(scaled_box)
                     except KeyError:
                         boxes.append([0.0, 0.0, 0.0, 0.0])
         return np.array(images), np.array(boxes)
 
-    def scale_bbox(self, x, y, w, h):
-        scale_x = self.scaler / 640
-        scale_y = self.scaler / 480
+    def scale_bbox(self, x, y, w, h, original_dims):
+        scale_x = self.scaler / original_dims[0]
+        scale_y = self.scaler_height / original_dims[1]
         new_x = x * scale_x
         new_y = y * scale_y
         new_width = w * scale_x
@@ -66,7 +69,7 @@ class Tracking:
         pool_size = 2
 
         self.model = models.Sequential([
-            layers.Conv2D(num_filters, (filter_size, filter_size), activation='relu', input_shape=(self.scaler, self.scaler, 3)),
+            layers.Conv2D(num_filters, (filter_size, filter_size), activation='relu', input_shape=(self.scaler_height, self.scaler, 3)),
             layers.BatchNormalization(),
             layers.MaxPooling2D((pool_size, pool_size)),
             layers.Conv2D(64, (filter_size, filter_size), activation='relu'),
@@ -90,7 +93,7 @@ class Tracking:
                            metrics=['accuracy'])
 
     def train_model(self, images_train, images_val, boxes_train, boxes_val):
-        self.model.fit(images_train, boxes_train, epochs=30, 
+        self.model.fit(images_train, boxes_train, epochs=epochs, 
                        validation_data=(images_val, boxes_val))
 
     def predict_bounding_box(self, img):
@@ -134,22 +137,45 @@ class Tracking:
         else:
             print(f"No coordinates found for frame {frame_name}")
 
+    def calculate_center(self, box):
+        """ Calculate the center (x_center, y_center) of a bounding box given as [x, y, w, h]. """
+        x, y, w, h = box
+        x_center = x + w / 2
+        y_center = y + h / 2
+        return np.array([x_center, y_center])
+    
+    def evaluate_model(self, images_val, boxes_val):
+        """ Evaluate the model by predicting the boxes and comparing with true boxes. """
+        predicted_boxes = self.model.predict(images_val)
+        centers_pred = np.array([self.calculate_center(box) for box in predicted_boxes])
+        centers_true = np.array([self.calculate_center(box) for box in boxes_val])
+        
+        # Compute differences between the predicted and actual centers
+        differences = np.linalg.norm(centers_true - centers_pred, axis=1)
+        
+        # Calculate the average difference
+        average_difference = np.mean(differences)
+        
+        print(f"Average difference in distance between real center and predicted center: {average_difference}")
+        return average_difference    
+
 if __name__ == "__main__":
     json_path = 'data/validatiedata/combined.json'
-    scaler = 256
-
+    scaler = 160
+    epochs = 5
     image_dir = 'data/traindata'
     tracking = Tracking(image_dir, json_path, scaler)
     images_train, images_val, boxes_train, boxes_val = tracking.preprocess_data()
     tracking.build_model()
     tracking.train_model(images_train, images_val, boxes_train, boxes_val)
+    tracking.evaluate_model(images_val, boxes_val)
     
-    example_img_path = os.path.join(image_dir, 'frame_61NOZC.jpg')
-    example_img = cv2.imread(example_img_path)
-    if example_img is not None:
-        predicted_box = tracking.predict_bounding_box(example_img)
-        tracking.visualize_bounding_box(example_img, predicted_box)
-        tracking.print_frame_coordinates_from_json(example_img_path)
-    else:
-        print(f"Could not read example image at {example_img_path}")
+    # example_img_path = os.path.join(image_dir, 'frame_61NOZC.jpg')
+    # example_img = cv2.imread(example_img_path)
+    # if example_img is not None:
+    #     predicted_box = tracking.predict_bounding_box(example_img)
+    #     tracking.visualize_bounding_box(example_img, predicted_box)
+    #     tracking.print_frame_coordinates_from_json(example_img_path)
+    # else:
+    #     print(f"Could not read example image at {example_img_path}")
     
