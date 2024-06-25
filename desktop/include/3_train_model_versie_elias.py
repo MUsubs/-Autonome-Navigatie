@@ -8,7 +8,7 @@ from tensorflow.keras import layers, models
 import random
 
 class Tracking:
-    def __init__(self, image_dir, json_path, scaler=256):
+    def __init__(self, image_dir, json_path, scaler=128):
         self.image_dir = image_dir
         self.json_path = json_path
         self.scaler = scaler
@@ -154,7 +154,7 @@ class Tracking:
 if __name__ == "__main__":
     image_dir = "data/traindata"
     json_path = "data/validatiedata/combined.json"
-    scaler = 64
+    scaler = 128
     epochs = 256
     tracking = Tracking(image_dir, json_path, scaler)
     images_train, images_val, boxes_train, boxes_val = tracking.preprocess_data()

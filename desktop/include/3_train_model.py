@@ -8,11 +8,11 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 class Tracking:
-    def __init__(self, image_dir, json_path, scaler=160):
+    def __init__(self, image_dir, json_path, scaler=128):
         self.image_dir = image_dir
         self.json_path = json_path
-        self.scaler = scaler  # Assuming scaler is the width for a 4:3 ratio
-        self.scaler_height = int(scaler * (3/4))  # Calculate height based on 4:3 ratio
+        self.scaler = scaler
+        self.scaler_height = int(scaler * (3/4))
         self.coordinates_data = self.load_json()
         self.model = None
         
@@ -33,8 +33,6 @@ class Tracking:
                 img = cv2.resize(img, (self.scaler, self.scaler_height))
                 images.append(img)
                 
-                print(f"Image {filename} scaled to resolution: {self.scaler}x{self.scaler_height}")
-
                 frame_name = filename.replace('.jpg', '.json')
                 if frame_name in self.coordinates_data:
                     box = self.coordinates_data[frame_name]
@@ -150,10 +148,7 @@ class Tracking:
         centers_pred = np.array([self.calculate_center(box) for box in predicted_boxes])
         centers_true = np.array([self.calculate_center(box) for box in boxes_val])
         
-        # Compute differences between the predicted and actual centers
         differences = np.linalg.norm(centers_true - centers_pred, axis=1)
-        
-        # Calculate the average difference
         average_difference = np.mean(differences)
         
         print(f"Average difference in distance between real center and predicted center: {average_difference}")
@@ -161,8 +156,8 @@ class Tracking:
 
 if __name__ == "__main__":
     json_path = 'data/validatiedata/combined.json'
-    scaler = 160
-    epochs = 5
+    scaler = 128
+    epochs = 20
     image_dir = 'data/traindata'
     tracking = Tracking(image_dir, json_path, scaler)
     images_train, images_val, boxes_train, boxes_val = tracking.preprocess_data()
