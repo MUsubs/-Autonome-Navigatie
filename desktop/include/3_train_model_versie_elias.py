@@ -191,3 +191,4 @@ if __name__ == "__main__":
             plt.show()
         else:
             print(f"Could not read example image at {img_path}")
+            
