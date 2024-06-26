@@ -124,16 +124,32 @@ class Tracking:
             # Dense layers for localization
             layers.Dense(128),
             layers.Dense(128),
-            
 
             layers.Dense(4)
+            # layers.Conv2D(32, (3, 3), activation='relu', input_shape=(self.scaler_height, self.scaler, 3)),
+            # layers.BatchNormalization(),
+            # layers.MaxPooling2D((2, 2)),
+            # layers.Conv2D(64, (3, 3), activation='relu'),
+            # layers.BatchNormalization(),
+            # layers.MaxPooling2D((2, 2)),
+            # layers.Conv2D(128, (3, 3), activation='relu'),
+            # layers.BatchNormalization(),
+            # layers.MaxPooling2D((2, 2)),
+            # layers.Conv2D(256, (3, 3), activation='relu'),
+            # layers.BatchNormalization(),
+            # layers.MaxPooling2D((2, 2)),
+            # layers.Flatten(),
+            # layers.Dense(128, activation='relu'),
+            # layers.Dropout(0.5),
+            # layers.Dense(64, activation='relu'),
+            # layers.Dense(4)  # 4 outputs for bounding box coordinates (x, y, w, h)
         ])
 
         self.model.compile(optimizer='adam',
                            loss='mean_squared_error',
                            metrics=['accuracy'])
 
-    def train_model(self, images_train, images_val, boxes_train, boxes_val, epochs=20):
+    def train_model(self, images_train, images_val, boxes_train, boxes_val, epochs=50):
         self.model.fit(images_train, boxes_train, epochs=epochs,
                        validation_data=(images_val, boxes_val))
 
@@ -148,39 +164,67 @@ class Tracking:
         predicted_box = self.model.predict(img_expanded)
         return predicted_box[0]
 
+    def calculate_iou(self, boxA, boxB):
+        # boxA and boxB should be in format [x, y, w, h]
+        xA = max(boxA[0], boxB[0])
+        yA = max(boxA[1], boxB[1])
+        xB = min(boxA[0] + boxA[2], boxB[0] + boxB[2])
+        yB = min(boxA[1] + boxA[3], boxB[1] + boxB[3])
+
+        # Compute intersection area
+        inter_area = max(0, xB - xA + 1) * max(0, yB - yA + 1)
+
+        # Compute area of each bounding box
+        boxA_area = boxA[2] * boxA[3]
+        boxB_area = boxB[2] * boxB[3]
+
+        # Compute IoU
+        iou = inter_area / float(boxA_area + boxB_area - inter_area)
+
+        return iou
+    
     def visualize_bounding_boxes(self, img_path):
-        example_img = cv2.imread(img_path)
-        if example_img is not None:
-            actual_box = self.get_actual_bounding_box(img_path)
-            predicted_box = self.predict_bounding_box(example_img)
+            example_img = cv2.imread(img_path)
+            if example_img is not None:
+                actual_box = self.get_actual_bounding_box(img_path)
+                predicted_box = self.predict_bounding_box(example_img)
 
-            mid_act = self.calculate_middle_point(actual_box)
-            mid_pred = self.calculate_middle_point(predicted_box)
-            difference = np.linalg.norm(np.array(mid_act) - np.array(mid_pred))
-            average_diff = np.mean(difference)
+                # Calculate middle points using original bounding box
+                mid_act = self.calculate_middle_point(actual_box)
+                mid_pred = self.calculate_middle_point(predicted_box)
+                difference = np.linalg.norm(np.array(mid_act) - np.array(mid_pred))
+                average_diff = np.mean(difference)
 
-            print("Middle point actual: ", mid_act)
-            print("Middle point prediction: ", mid_pred)
-            print("Difference: ", difference)
-            print(average_diff)
+                iou = self.calculate_iou(actual_box, predicted_box)
+                print("IOU: ", iou)
 
-            img_with_actual_box = self.draw_bounding_box(example_img.copy(), actual_box, (0, 255, 0))
-            img_with_predicted_box = self.draw_bounding_box(img_with_actual_box, predicted_box, (0, 0, 255))
+                print("Middle point actual: ", mid_act)
+                print("Middle point prediction: ", mid_pred)
+                print("Difference: ", difference)
+                print("Average difference: ", average_diff)
 
-            # Draw middle points
-            img_with_actual_middle = self.draw_middle_point(img_with_predicted_box, mid_act, (0, 255, 0))
-            img_with_predicted_middle = self.draw_middle_point(img_with_actual_middle, mid_pred, (0, 0, 255))
+                # Resize image to 640x480 for display
+                resized_img = cv2.resize(example_img, (640, 480))
 
-            plt.imshow(cv2.cvtColor(img_with_predicted_middle, cv2.COLOR_BGR2RGB))
+                # Display the image with bounding boxes and middle points
+                img_with_actual_box = self.draw_bounding_box(resized_img, actual_box, (0, 255, 0))
+                img_with_predicted_box = self.draw_bounding_box(img_with_actual_box, predicted_box, (0, 0, 255))
 
-            actual_patch = plt.Line2D([0], [0], color='g', linewidth=2, label='Actual Box')
-            predicted_patch = plt.Line2D([0], [0], color='r', linewidth=2, label='Predicted Box')
-            
-            plt.legend(handles=[actual_patch, predicted_patch], loc='lower right')
+                img_with_actual_middle = self.draw_middle_point(img_with_predicted_box, mid_act, (0, 255, 0))
+                img_with_predicted_middle = self.draw_middle_point(img_with_actual_middle, mid_pred, (0, 0, 255))
 
-            plt.show()
-        else:
-            print(f"Could not read example image at {img_path}")
+                plt.imshow(cv2.cvtColor(img_with_predicted_middle, cv2.COLOR_BGR2RGB))
+
+                actual_patch = plt.Line2D([0], [0], color='g', linewidth=2, label='Actual Box')
+                predicted_patch = plt.Line2D([0], [0], color='r', linewidth=2, label='Predicted Box')
+
+                plt.legend(handles=[actual_patch, predicted_patch], loc='lower right')
+
+                plt.show()
+            else:
+                print(f"Could not read example image at {img_path}")
+
+
 
     def get_actual_bounding_box(self, img_path):
         frame_name = os.path.basename(img_path).replace('.jpg', '.json')
@@ -205,7 +249,7 @@ if __name__ == "__main__":
     image_dir = "data/traindata"
     json_path = "data/validatiedata/combined.json"
     scaler = 64
-    epochs = 1500
+    epochs = 1
 
     tracking = Tracking(image_dir, json_path, scaler)
     images_train, images_val, boxes_train, boxes_val = tracking.preprocess_data()
