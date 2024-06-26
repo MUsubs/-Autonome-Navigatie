@@ -248,7 +248,7 @@ class Tracking:
 if __name__ == "__main__":
     image_dir = "data/traindata"
     json_path = "data/validatiedata/combined.json"
-    scaler = 64
+    scaler = 640
     epochs = 1
 
     tracking = Tracking(image_dir, json_path, scaler)
