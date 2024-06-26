@@ -8,7 +8,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 class Tracking:
-    def __init__(self, image_dir, json_path, scaler=128):
+    def __init__(self, image_dir, json_path, scaler=80):
         self.image_dir = image_dir
         self.json_path = json_path
         self.scaler = scaler
@@ -60,6 +60,7 @@ class Tracking:
         images, boxes = self.load_data()
         images = images / 255.0
         return train_test_split(images, boxes, test_size=0.2, random_state=42)
+
 
     def build_model(self):
         num_filters = 32
@@ -152,19 +153,39 @@ class Tracking:
         average_difference = np.mean(differences)
         
         print(f"Average difference in distance between real center and predicted center: {average_difference}")
-        return average_difference    
+        return average_difference
+    
+    def convert_distance_to_other_resolutions(self, average_difference, resolutions):
+        """
+        Convert an average difference calculated at the current scaler settings to other specified resolutions.
+        Each resolution is specified as a tuple (width, height) maintaining a 4:3 aspect ratio.
+        """
+        normalized_distance = (100 * average_difference) / self.scaler
 
+        result = {}
+        for width, height in resolutions:
+            scaling_factor = width / self.scaler
+            converted_distance = normalized_distance * scaling_factor
+            result[f"{width}x{height}"] = converted_distance
+        
+        return result
+    
+    
 if __name__ == "__main__":
     json_path = 'data/validatiedata/combined.json'
-    scaler = 128
+    scaler = 80
     epochs = 20
     image_dir = 'data/traindata'
     tracking = Tracking(image_dir, json_path, scaler)
     images_train, images_val, boxes_train, boxes_val = tracking.preprocess_data()
     tracking.build_model()
     tracking.train_model(images_train, images_val, boxes_train, boxes_val)
-    tracking.evaluate_model(images_val, boxes_val)
-    
+    average_diff_at_current_settings = tracking.evaluate_model(images_val, boxes_val)
+
+    resolutions = [(1024, 768), (640, 480), (320, 240)]
+    converted_distances = tracking.convert_distance_to_other_resolutions(average_diff_at_current_settings, resolutions)
+    print(converted_distances)
+
     # example_img_path = os.path.join(image_dir, 'frame_61NOZC.jpg')
     # example_img = cv2.imread(example_img_path)
     # if example_img is not None:
