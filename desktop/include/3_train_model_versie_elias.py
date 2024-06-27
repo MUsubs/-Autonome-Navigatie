@@ -146,7 +146,7 @@ class Tracking:
     def train_model(self, images_train, images_val, boxes_train, boxes_val, epochs=50):
         self.model.fit(images_train, boxes_train, epochs=epochs,
                        validation_data=(images_val, boxes_val))
-        self.model.save("modelE.keras")
+        self.model.save("modelE.h5")
 
     def predict_bounding_box(self, img):
         if img is None or img.size == 0:
@@ -213,7 +213,7 @@ class Tracking:
             img_with_predicted_middle = self.draw_middle_point(img_with_actual_middle, mid_pred, (0, 0, 255))
 
             # Rescale_mid_pred coordinated middle point predicted box.
-            print("Middle point prediction: ", rescaled_mid_pred)
+            # print("Middle point prediction: ", rescaled_mid_pred)
 
             plt.imshow(cv2.cvtColor(img_with_predicted_middle, cv2.COLOR_BGR2RGB))
 
@@ -227,6 +227,7 @@ class Tracking:
             plt.show()
         else:
             print("Error")
+        return rescaled_mid_pred
 
 
 
@@ -253,7 +254,7 @@ if __name__ == "__main__":
     image_dir = "data/traindata"
     json_path = "data/validatiedata/combined.json"
     scaler = 128
-    epochs = 1000
+    epochs = 1
 
     tracking = Tracking(image_dir, json_path, scaler)
     images_train, images_val, boxes_train, boxes_val = tracking.preprocess_data()
