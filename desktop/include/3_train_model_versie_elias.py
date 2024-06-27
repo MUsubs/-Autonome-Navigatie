@@ -146,6 +146,7 @@ class Tracking:
     def train_model(self, images_train, images_val, boxes_train, boxes_val, epochs=50):
         self.model.fit(images_train, boxes_train, epochs=epochs,
                        validation_data=(images_val, boxes_val))
+        self.model.save("modelE.keras")
 
     def predict_bounding_box(self, img):
         if img is None or img.size == 0:
@@ -197,7 +198,7 @@ class Tracking:
             rescaled_mid_act = self.rescale_point(mid_act, original_width, original_height)
 
             difference = np.linalg.norm(np.array(rescaled_mid_act) - np.array(rescaled_mid_pred))
-            average_diff = np.mean(difference)
+ 
 
             iou = self.calculate_iou(rescaled_actual_box, rescaled_predicted_box)
             print("IOU: ", iou)
@@ -211,10 +212,8 @@ class Tracking:
             img_with_actual_middle = self.draw_middle_point(img_with_predicted_box, mid_act, (0, 255, 0))
             img_with_predicted_middle = self.draw_middle_point(img_with_actual_middle, mid_pred, (0, 0, 255))
 
-            print("Middle point actual: ", rescaled_mid_act)
+            # Rescale_mid_pred coordinated middle point predicted box.
             print("Middle point prediction: ", rescaled_mid_pred)
-            print("Difference: ", difference)
-            print("Average difference: ", average_diff)
 
             plt.imshow(cv2.cvtColor(img_with_predicted_middle, cv2.COLOR_BGR2RGB))
 
@@ -253,7 +252,7 @@ class Tracking:
 if __name__ == "__main__":
     image_dir = "data/traindata"
     json_path = "data/validatiedata/combined.json"
-    scaler = 64
+    scaler = 128
     epochs = 1000
 
     tracking = Tracking(image_dir, json_path, scaler)
