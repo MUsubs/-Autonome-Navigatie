@@ -77,9 +77,6 @@ class Tracking:
         return new_cx, new_cy
 
     def draw_bounding_box(self, img, box, color):
-        if img is None or img.size == 0:
-            raise ValueError("Invalid image provided")
-
         original_height, original_width, _ = img.shape
         scaled_box = self.rescale_bbox(box, original_width, original_height)
 
@@ -92,9 +89,6 @@ class Tracking:
         return img
 
     def draw_middle_point(self, img, middle_point, color):
-        if img is None or img.size == 0:
-            raise ValueError("Invalid image provided")
-
         original_height, original_width, _ = img.shape
         scaled_point = self.rescale_point(middle_point, original_width, original_height)
 
@@ -124,18 +118,35 @@ class Tracking:
             # Dense layers for localization
             layers.Dense(128),
             layers.Dense(128),
-            
 
             layers.Dense(4)
+            # layers.Conv2D(32, (3, 3), activation='relu', input_shape=(self.scaler_height, self.scaler, 3)),
+            # layers.BatchNormalization(),
+            # layers.MaxPooling2D((2, 2)),
+            # layers.Conv2D(64, (3, 3), activation='relu'),
+            # layers.BatchNormalization(),
+            # layers.MaxPooling2D((2, 2)),
+            # layers.Conv2D(128, (3, 3), activation='relu'),
+            # layers.BatchNormalization(),
+            # layers.MaxPooling2D((2, 2)),
+            # layers.Conv2D(256, (3, 3), activation='relu'),
+            # layers.BatchNormalization(),
+            # layers.MaxPooling2D((2, 2)),
+            # layers.Flatten(),
+            # layers.Dense(128, activation='relu'),
+            # layers.Dropout(0.5),
+            # layers.Dense(64, activation='relu'),
+            # layers.Dense(4)  # 4 outputs for bounding box coordinates (x, y, w, h)
         ])
 
         self.model.compile(optimizer='adam',
                            loss='mean_squared_error',
                            metrics=['accuracy'])
 
-    def train_model(self, images_train, images_val, boxes_train, boxes_val, epochs=20):
+    def train_model(self, images_train, images_val, boxes_train, boxes_val, epochs=50):
         self.model.fit(images_train, boxes_train, epochs=epochs,
                        validation_data=(images_val, boxes_val))
+        self.model.save("modelE.h5")
 
     def predict_bounding_box(self, img):
         if img is None or img.size == 0:
@@ -148,39 +159,77 @@ class Tracking:
         predicted_box = self.model.predict(img_expanded)
         return predicted_box[0]
 
+    def calculate_iou(self, boxA, boxB):
+        # boxA and boxB should be in format [x, y, w, h]
+        xA = max(boxA[0], boxB[0])
+        yA = max(boxA[1], boxB[1])
+        xB = min(boxA[0] + boxA[2], boxB[0] + boxB[2])
+        yB = min(boxA[1] + boxA[3], boxB[1] + boxB[3])
+
+        # Compute intersection area
+        inter_area = max(0, xB - xA + 1) * max(0, yB - yA + 1)
+
+        # Compute area of each bounding box
+        boxA_area = boxA[2] * boxA[3]
+        boxB_area = boxB[2] * boxB[3]
+
+        # Compute IoU
+        iou = inter_area / float(boxA_area + boxB_area - inter_area)
+
+        return iou
+    
     def visualize_bounding_boxes(self, img_path):
         example_img = cv2.imread(img_path)
         if example_img is not None:
+            original_height, original_width, _ = example_img.shape
             actual_box = self.get_actual_bounding_box(img_path)
             predicted_box = self.predict_bounding_box(example_img)
 
+            # Calculate middle points using original bounding box
             mid_act = self.calculate_middle_point(actual_box)
             mid_pred = self.calculate_middle_point(predicted_box)
-            difference = np.linalg.norm(np.array(mid_act) - np.array(mid_pred))
-            average_diff = np.mean(difference)
 
-            print("Middle point actual: ", mid_act)
-            print("Middle point prediction: ", mid_pred)
-            print("Difference: ", difference)
-            print(average_diff)
+            # Rescale the predicted box to the original size
+            rescaled_predicted_box = self.rescale_bbox(predicted_box, original_width, original_height)
+            rescaled_mid_pred = self.rescale_point(mid_pred, original_width, original_height)
+            
+            # Rescale the actual box to the original size
+            rescaled_actual_box = self.rescale_bbox(actual_box, original_width, original_height)
+            rescaled_mid_act = self.rescale_point(mid_act, original_width, original_height)
 
-            img_with_actual_box = self.draw_bounding_box(example_img.copy(), actual_box, (0, 255, 0))
+            difference = np.linalg.norm(np.array(rescaled_mid_act) - np.array(rescaled_mid_pred))
+ 
+
+            iou = self.calculate_iou(rescaled_actual_box, rescaled_predicted_box)
+            print("IOU: ", iou)
+
+            # Resize image to 640x480 for display
+            resized_img = cv2.resize(example_img, (640, 480))
+
+            # Display the image with bounding boxes and middle points
+            img_with_actual_box = self.draw_bounding_box(example_img, actual_box, (0, 255, 0))
             img_with_predicted_box = self.draw_bounding_box(img_with_actual_box, predicted_box, (0, 0, 255))
-
-            # Draw middle points
             img_with_actual_middle = self.draw_middle_point(img_with_predicted_box, mid_act, (0, 255, 0))
             img_with_predicted_middle = self.draw_middle_point(img_with_actual_middle, mid_pred, (0, 0, 255))
 
+            # Rescale_mid_pred coordinated middle point predicted box.
+            # print("Middle point prediction: ", rescaled_mid_pred)
+
             plt.imshow(cv2.cvtColor(img_with_predicted_middle, cv2.COLOR_BGR2RGB))
 
-            actual_patch = plt.Line2D([0], [0], color='g', linewidth=2, label='Actual Box')
-            predicted_patch = plt.Line2D([0], [0], color='r', linewidth=2, label='Predicted Box')
-            
-            plt.legend(handles=[actual_patch, predicted_patch], loc='lower right')
+            actualBB_legend = plt.Line2D([0], [0], color='g', linewidth=2, label='Actual Box')
+            predictedBB_legend = plt.Line2D([0], [0], color='r', linewidth=2, label='Predicted Box')
+            predicted_mid_point = plt.scatter([0], [0], color='g', linewidths=1, label="Predicted Middlepoint")
+            actual_mid_point = plt.scatter([0], [0], color='r', linewidths=1, label="Actual Middlepoint")
 
+
+            plt.legend(handles=[actualBB_legend, predictedBB_legend, actual_mid_point, predicted_mid_point], loc='upper right')
             plt.show()
         else:
-            print(f"Could not read example image at {img_path}")
+            print("Error")
+        return rescaled_mid_pred
+
+
 
     def get_actual_bounding_box(self, img_path):
         frame_name = os.path.basename(img_path).replace('.jpg', '.json')
@@ -205,7 +254,7 @@ if __name__ == "__main__":
     image_dir = "data/traindata"
     json_path = "data/validatiedata/combined.json"
     scaler = 128
-    epochs = 1500
+    epochs = 1
 
     tracking = Tracking(image_dir, json_path, scaler)
     images_train, images_val, boxes_train, boxes_val = tracking.preprocess_data()
