@@ -94,6 +94,8 @@ class Tracking:
     def train_model(self, images_train, images_val, boxes_train, boxes_val):
         self.model.fit(images_train, boxes_train, epochs=epochs, 
                        validation_data=(images_val, boxes_val))
+        self.model.save("model.keras")
+
 
     def predict_bounding_box(self, img):
         if img is None or img.size == 0:
@@ -106,35 +108,6 @@ class Tracking:
         predicted_box = self.model.predict(img_expanded)
         print(f"Predicted box (normalized): {predicted_box[0]}")
         return predicted_box[0]
-        
-    def visualize_bounding_box(self, img, box):
-        if img is None or img.size == 0:
-            raise ValueError("Invalid image provided")
-            
-        img_resized = cv2.resize(img, (self.scaler, self.scaler))
-        x, y, w, h = box
-        x = int(x * img_resized.shape[1])
-        y = int(y * img_resized.shape[0])
-        w = int(w * img_resized.shape[1])
-        h = int(h * img_resized.shape[0])
-
-        img_with_box = cv2.rectangle(img_resized.copy(), (x, y), (x + w, y + h), (255, 0, 0), 2)
-
-        plt.imshow(cv2.cvtColor(img_with_box, cv2.COLOR_BGR2RGB))
-        plt.show()
-
-    def print_frame_coordinates_from_json(self, filename):
-        frame_name = filename.replace('.jpg', '.json')
-        print(f"Coordinates for frame {frame_name}:")
-        if frame_name in self.coordinates_data:
-            box = self.coordinates_data[frame_name]
-            x = box.get('x', 'N/A')
-            y = box.get('y', 'N/A')
-            w = box.get('w', 'N/A')
-            h = box.get('h', 'N/A')
-            print(f"x={x}, y={y}, w={w}, h={h}")
-        else:
-            print(f"No coordinates found for frame {frame_name}")
 
     def calculate_center(self, box):
         """ Calculate the center (x_center, y_center) of a bounding box given as [x, y, w, h]. """
@@ -170,11 +143,10 @@ class Tracking:
         
         return result
     
-    
 if __name__ == "__main__":
     json_path = 'data/validatiedata/combined.json'
-    scaler = 80
-    epochs = 20
+    scaler = 64
+    epochs = 100
     image_dir = 'data/traindata'
     tracking = Tracking(image_dir, json_path, scaler)
     images_train, images_val, boxes_train, boxes_val = tracking.preprocess_data()
@@ -185,13 +157,4 @@ if __name__ == "__main__":
     resolutions = [(1024, 768), (640, 480), (320, 240)]
     converted_distances = tracking.convert_distance_to_other_resolutions(average_diff_at_current_settings, resolutions)
     print(converted_distances)
-
-    # example_img_path = os.path.join(image_dir, 'frame_61NOZC.jpg')
-    # example_img = cv2.imread(example_img_path)
-    # if example_img is not None:
-    #     predicted_box = tracking.predict_bounding_box(example_img)
-    #     tracking.visualize_bounding_box(example_img, predicted_box)
-    #     tracking.print_frame_coordinates_from_json(example_img_path)
-    # else:
-    #     print(f"Could not read example image at {example_img_path}")
     
