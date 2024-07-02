@@ -1,44 +1,34 @@
-#include "data_receiver.hpp"
-#include "data_sender.hpp"
-#include "message_interpreter.hpp"
-#include "photo_diode.hpp"
-#include "serial_control.hpp"
-
-#define R2D2_DEBUG_ENABLE
-
 #include <Arduino.h>
-const int frequency = 30;
+#include <FreeRTOS.h>
+#include <semphr.h>
+#include <task.h>
 
-sen::DataSender sender( 22, frequency, 32, 1 );
-sen::SerialControl serial_control{ sender, 1 };
+#include "data_transceiver.hpp"
+#include "message_interpreter.hpp"
+#include "message_passer.hpp"
+#include "packet_enums.hpp"
+
+// #define R2D2_DEBUG_ENABLE
+#include "r2d2_debug_macros.hpp"
+
+bool is_sub = false;
+
+sen::MessageInterpreter message_interpreter{ 20, 1 };
+sen::DataTransceiver data_transceiver{ 10, 9, 2, is_sub, message_interpreter, 1 };
+sen::SerialControl serial_control{ data_transceiver, 1 };
+sen::MessagePasser message_passer{ serial_control, 1 };
 
 void setup() {
-    pinMode( LED_BUILTIN, OUTPUT );
-    pinMode( 7, INPUT );
-    pinMode( 8, INPUT );
+    Serial.begin( 115200 );
 
-    Serial.begin( 9600 );
+    message_interpreter.setListener( &message_passer );
+
+    message_interpreter.activate();
+    data_transceiver.activate();
     serial_control.activate();
+    message_passer.activate();
 }
 
-bool b_do = false;
-
 void loop() {
-    if ( serial_control.getMeasurementCount() ) {
-        digitalWrite( LED_BUILTIN, HIGH );
-    } else {
-        digitalWrite( LED_BUILTIN, LOW );
-    }
-    if ( !digitalRead( 7 ) && !digitalRead( 8 ) ) {
-        b_do = true;
-    }
-    if ( digitalRead( 7 ) && b_do ) {
-        serial_control.receivedACK();
-        b_do = false;
-    }
-    if ( digitalRead( 8 ) && b_do ) {
-        serial_control.addMeasure( analogReadTemp() );
-        b_do = false;
-    }
     taskYIELD();
 }
