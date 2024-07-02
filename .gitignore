@@ -574,6 +574,7 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # VS Code files for those working on multiple tools
+.vscode
 .vscode/*
 .vscode/settings.json
 .vscode/tasks.json
@@ -600,12 +601,14 @@ FodyWeavers.xsd
 .pio
 
 
+
 .pio
 
 data/
 data2/
 dataset_comb/
 dataset_new/
+
 # ARDUINO GITIGNORE TEMPLATE
 app/bin/
 app/pde.jar
