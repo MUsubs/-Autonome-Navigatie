@@ -15,7 +15,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+!lib/
 lib64/
 parts/
 sdist/
@@ -576,10 +576,11 @@ FodyWeavers.xsd
 # VS Code files for those working on multiple tools
 .vscode
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+.code-workspace
 *.code-workspace
 .clang-format
 
@@ -598,6 +599,15 @@ FodyWeavers.xsd
 
 # PLATFORMIO GITIGNORE TEMPLATE
 .pio
+
+
+
+.pio
+
+data/
+data2/
+dataset_comb/
+dataset_new/
 
 # ARDUINO GITIGNORE TEMPLATE
 app/bin/
@@ -671,3 +681,8 @@ manifest.mf
 nbbuild.xml
 nbproject
 *.ino
+
+# DOXYGEN
+
+html/
+latex/
